@@ -3,21 +3,147 @@ import re
 
 
 def get_db_connection():
-    """
-    Establishes and returns a database connection to the 'requests.db' file.
-    """
+   
     try:
         conn = sqlite3.connect('requests.db')
-        conn.row_factory = sqlite3.Row  # Allows access to columns by name
+        conn.row_factory = sqlite3.Row  
         return conn
     except sqlite3.Error as e:
         print(f"Error connecting to database: {e}")
         return None
 
+
+def initialize_items():
+   
+    conn = get_db_connection()
+    if conn is None:
+        print("Database connection failed.")
+        return
+
+    try:
+        cursor = conn.cursor()
+       
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                particular TEXT UNIQUE NOT NULL,
+                available BOOLEAN NOT NULL
+            )
+        ''')
+
+        
+        default_items = [
+            ("A3 ENVELOPE GREEN", True),
+            ("A3 PAPER", True),
+            ("A3 TRANSPARENT FOLDER", True),
+            ("A4 ENVELOPE GREEN", True),
+            ("A4 LOGO ENVOLOP", True),
+            ("A4 PAPER", True),
+            ("A4 TRANSPARENT FOLDER", True),
+            ("BINDER CLIP 19MM", True),
+            ("BINDER CLIP 25MM", True),
+            ("BINDER CLIP 41MM", True),
+            ("BOX FILE", True),
+            ("C D MARKER", True),
+            ("CALCULATOR", True),
+            ("CARBON PAPERS", True),
+            ("CELLO TAPE", True),
+            ("CUTTER", True),
+            ("DUSTER", True),
+            ("ERASER", True),
+            ("FEVI STICK", True),
+            ("GEL PEN BLACK", True),
+            ("HIGH LIGHTER", True),
+            ("L FOLDER", True),
+            ("LETTER HEAD", True),
+            ("LOGO ENVOLOP SMALL", True),
+            ("NOTE PAD", True),
+            ("PEN", True),
+            ("PENCIL", True),
+            ("PERMANENT MARKER", True),
+            ("PUNCHING MACHINE", True),
+            ("PUSH PIN", True),
+            ("REGISTER", True),
+            ("ROOM SPRAY", True),
+            ("RUBBER BAND BAG", True),
+            ("SCALE", True),
+            ("SCISSOR", True),
+            ("FILE SEPARATOR", True),
+            ("SHARPENER", True),
+            ("SKETCH PEN", True),
+            ("SILVER PEN", True),
+            ("SPRING FILE", True),
+            ("STAMP PAD", True),
+            ("STAMP PAD INK", True),
+            ("STAPLER", True),
+            ("STAPLER PIN BIG", True),
+            ("STAPLER PIN SMALL", True),
+            ("STICKY NOTE", True),
+            ("TRANSPARENT FILE", True),
+            ("U PIN", True),
+            ("VISTING CARD HOLDER", True),
+            ("WHITE BOARD MARKER", True),
+            ("WHITE INK", True),
+        ]
+
+        
+        for item in default_items:
+            cursor.execute('''
+                INSERT OR IGNORE INTO items (particular, available)
+                VALUES (?, ?)
+            ''', item)
+
+        conn.commit()
+        print("Items table initialized successfully.")
+    except sqlite3.Error as e:
+        print(f"Error initializing items: {e}")
+    finally:
+        conn.close()
+
+
+def get_all_items():
+    
+    conn = get_db_connection()
+    if conn is None:
+        print("Database connection failed.")
+        return []
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute('SELECT particular, available FROM items')
+        items = [dict(row) for row in cursor.fetchall()]
+        return items
+    except sqlite3.Error as e:
+        print(f"Error fetching items: {e}")
+        return []
+    finally:
+        conn.close()
+
+
+def update_item_availability(particular, available):
+    
+    conn = get_db_connection()
+    if conn is None:
+        print("Database connection failed.")
+        return
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE items
+            SET available = ?
+            WHERE particular = ?
+        ''', (int(available), particular))
+        conn.commit()
+        print(f"Item '{particular}' availability updated to {available}.")
+    except sqlite3.Error as e:
+        print(f"Error updating item availability: {e}")
+    finally:
+        conn.close()
+
+
 def insert_user_with_items(emp_id, email, selected_items):
-    """
-    Inserts the user details and their selected items into the 'users' and 'user_items' tables.
-    """
+   
     conn = get_db_connection()
     if conn is None:
         print("Database connection failed.")
@@ -26,14 +152,13 @@ def insert_user_with_items(emp_id, email, selected_items):
     try:
         cursor = conn.cursor()
 
-        # Insert user details into the users table
+        
         cursor.execute('''
             INSERT INTO users (emp_id, email)
             VALUES (?, ?)
         ''', (emp_id, email))
-        user_id = cursor.lastrowid  # Get the inserted user's ID
-
-        # Insert each selected item into the user_items table
+        user_id = cursor.lastrowid  
+        
         for item in selected_items:
             cursor.execute('''
                 INSERT INTO user_items (user_id, item)
@@ -49,17 +174,12 @@ def insert_user_with_items(emp_id, email, selected_items):
 
 
 def is_valid_email(email):
-    """
-    Validates if the email ends with either @gmail.com or @ceat.com.
-    """
+    
     return email.endswith('@gmail.com') or email.endswith('@ceat.com')
 
 
 def insert_request(name, email, description):
-    """
-    Inserts a new request into the 'requests' table with default status as 'Pending'.
-    Ensures the email is valid before inserting.
-    """
+    
     if not is_valid_email(email):
         print("Invalid email address. It must end with '@gmail.com' or '@ceat.com'.")
         return
@@ -83,9 +203,7 @@ def insert_request(name, email, description):
 
 
 def get_all_requests():
-    """
-    Fetches all requests from the 'requests' table and returns them as a list of dictionaries.
-    """
+    
     conn = get_db_connection()
     if conn is None:
         print("Database connection failed.")
@@ -95,7 +213,7 @@ def get_all_requests():
         cursor = conn.cursor()
         cursor.execute('SELECT * FROM requests')
         requests = cursor.fetchall()
-        return [dict(req) for req in requests]  # Convert rows to dictionaries
+        return [dict(req) for req in requests]  
     except sqlite3.Error as e:
         print(f"Error fetching requests: {e}")
         return []
@@ -104,9 +222,7 @@ def get_all_requests():
 
 
 def update_request_status(request_id, status):
-    """
-    Updates the status of a request based on the request ID.
-    """
+    
     conn = get_db_connection()
     if conn is None:
         print("Database connection failed.")
@@ -127,9 +243,7 @@ def update_request_status(request_id, status):
 
 
 def reset_request_ids():
-    """
-    Resets the IDs in the `requests` table to ensure they remain sequential after a deletion.
-    """
+    
     conn = get_db_connection()
     if conn is None:
         print("Database connection failed.")
@@ -137,17 +251,17 @@ def reset_request_ids():
 
     try:
         cursor = conn.cursor()
-        # Create a temporary table to hold data
+        
         cursor.execute('CREATE TEMPORARY TABLE temp_requests AS SELECT * FROM requests')
-        # Clear the original table
+        
         cursor.execute('DELETE FROM requests')
-        # Reset the auto-increment counter
+        
         cursor.execute('DELETE FROM sqlite_sequence WHERE name="requests"')
-        # Insert data back into the original table with new IDs
+        
         cursor.execute('''
             INSERT INTO requests (name, email, description, status) 
             SELECT name, email, description, status FROM temp_requests''')
-        # Drop the temporary table
+        
         cursor.execute('DROP TABLE temp_requests')
         conn.commit()
         print("Request IDs reset successfully.")
@@ -158,9 +272,7 @@ def reset_request_ids():
 
 
 def delete_request(request_id):
-    """
-    Deletes a request from the database based on the request ID and resets the request IDs afterward.
-    """
+    
     conn = get_db_connection()
     if conn is None:
         print("Database connection failed.")
@@ -179,3 +291,6 @@ def delete_request(request_id):
         print(f"Error deleting request: {e}")
     finally:
         conn.close()
+
+
+initialize_items()
