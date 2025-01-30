@@ -11,7 +11,6 @@ from database import (
 )
 from mail import send_email
 
-
 bg_image_url = "https://vibesdesign.com/wp-content/uploads/2016/02/ceat-tyres.jpg"
 background_style = f"""
 <style>
@@ -20,7 +19,61 @@ background_style = f"""
     background-size: cover;
 }}
 [data-testid="stSidebar"] {{
-   background-color: rgba(211, 211, 211, 0.8);  /* Light blue with transparency */
+   background-color: rgba(211, 211, 211, 0.8);  
+}}
+
+
+@media screen and (max-width: 768px) {{
+    /* Adjust form elements */
+    .stTextInput input, .stSelectbox select {{
+        font-size: 16px !important;  
+    }}
+
+    
+    div[data-testid="column"] {{
+        width: 100% !important;
+        padding: 0.2rem !important;
+    }}
+
+   
+    div[data-testid="stVerticalBlock"] > div {{
+        padding: 0.5rem 0;
+    }}
+
+    
+    div[data-testid="stHorizontalBlock"] {{
+        flex-direction: column !important;
+    }}
+
+    
+    .stButton button {{
+        width: 100% !important;
+        margin: 5px 0;
+    }}
+
+   
+    .stApp > header {{
+        display: none;
+    }}
+}}
+
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+
+.stTextInput, .stSelectbox, .stNumberInput {{
+    margin: 8px 0;
+}}
+
+.stCheckbox label {{
+    font-size: 14px !important;
+}}
+
+
+div[data-testid="stExpander"] {{
+    margin: 10px 0;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
 }}
 </style>
 """
@@ -43,13 +96,13 @@ if 'is_admin' not in st.session_state:
 
 
 def validate_email(email):
-   
+
     email_regex = r'^[a-zA-Z0-9_.+-]+@(gmail\.com|ceat\.com)$'
     return re.match(email_regex, email) is not None
 
 
 def user_login():
-    
+
     st.title("User Login")
     emp_id = st.text_input("Employee ID", key="user_emp_id")
     email = st.text_input("Email", key="user_email")
@@ -72,6 +125,7 @@ def user_login():
 
 
 def user_request_form():
+
     if st.session_state.show_login_success:
         st.success("Login successful!")
         st.session_state.show_login_success = False
@@ -83,10 +137,10 @@ def user_request_form():
     if "selected_items" not in st.session_state:
         st.session_state.selected_items = {}
 
-    
+
     items = get_all_items()
 
-  
+
     search_query = st.text_input("Search Items", key="item_search")
     filtered_items = [item for item in items if search_query.lower() in item["particular"].lower()]
 
@@ -99,10 +153,12 @@ def user_request_form():
         if item_name not in st.session_state.selected_items:
             st.session_state.selected_items[item_name] = {"selected": False, "quantity": 1}
 
-        col1, col2 = st.columns([4, 1])
+
+        col1, col2 = st.columns([3, 1])
+
         with col1:
             if item_available:
-               
+
                 if st.checkbox(
                         item_name,
                         value=st.session_state.selected_items[item_name]["selected"],
@@ -113,14 +169,8 @@ def user_request_form():
                     st.session_state.selected_items[item_name]["selected"] = False
                     st.session_state.selected_items[item_name]["quantity"] = 1
             else:
-                
-                st.checkbox(
-                    item_name,
-                    value=False,
-                    key=f"chk_{item_key}",
-                    disabled=True
-                )
-                st.caption(":red[Currently Unavailable]")
+
+                st.markdown(f"~~{item_name}~~ *(Currently Unavailable)*")
 
         if item_available and st.session_state.selected_items[item_name]["selected"]:
             with col2:
@@ -133,9 +183,9 @@ def user_request_form():
                 st.session_state.selected_items[item_name]["quantity"] = quantity
         else:
             with col2:
-                st.write("")  
+                st.empty()
 
-    
+
     available_items = [item["particular"] for item in items if item["available"]]
     selected_items = {
         item: details
@@ -183,7 +233,7 @@ def user_request_form():
 
 
 def admin_login():
-    
+
     with st.sidebar:
         st.title("Admin Login")
         username = st.text_input("Username", key="admin_username_input")
@@ -202,7 +252,7 @@ def admin_login():
 
 
 def admin_dashboard():
-    
+
     with st.sidebar:
         st.title("Admin Panel")
         st.subheader("Login Information")
@@ -220,39 +270,45 @@ def admin_dashboard():
         for req in requests:
             req_id = req.get("id", "N/A")
             emp_id = req.get("emp_id", "N/A")
+            name = req.get("name", "N/A")
+            department = req.get("department", "N/A")
             email = req.get("email", "N/A")
             status = req.get("status", "Pending")
             description = req.get("description", "N/A")
 
-            st.write(f"### Request ID: {req_id}")
-            st.write(f"- **Emp ID**: {emp_id}")
-            st.write(f"- **Email**: {email}")
-            st.write(f"- **Description**:\n{description}")
-            st.write(f"- **Status**: {status}")
 
-            col1, col2, col3 = st.columns([3, 2, 2])
-            with col1:
+            with st.expander(f"Request ID: {req_id}", expanded=False):
+
+                st.write(f"**Employee**: {emp_id} - {name} ({department})")
+                st.write(f"**Email**: {email}")
+                st.write(f"**Description**:\n{description}")
+                st.write(f"**Status**: {status}")
+
+
                 status_update = st.radio(
                     f"Status for {req_id}",
                     ["Pending", "Approved", "Rejected"],
                     index=["Pending", "Approved", "Rejected"].index(status),
                     key=f"status_radio_{req_id}",
                 )
-            with col2:
-                if st.button(f"Update {req_id}", key=f"update_btn_{req_id}"):
-                    update_request_status(req_id, status_update)
-                    subject = f"Request {status_update}"
-                    body = f"Your request {req_id} has been {status_update.lower()}\n\nDetails:\n{description}"
-                    send_email(email, "Admin", req, subject, body)
-                    st.success(f"Updated request {req_id}")
-            with col3:
-                if st.button(f"Delete {req_id}", key=f"delete_btn_{req_id}"):
-                    delete_request(req_id)
-                    st.success(f"Deleted request {req_id}")
-            st.write("---")
+
+
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button(f"Update {req_id}", key=f"update_btn_{req_id}"):
+                        update_request_status(req_id, status_update)
+                        subject = f"Request {status_update}"
+                        body = f"Your request {req_id} has been {status_update.lower()}\n\nDetails:\n{description}"
+                        send_email(email, "Admin", req, subject, body)
+                        st.success(f"Updated request {req_id}")
+                with col2:
+                    if st.button(f"Delete {req_id}", key=f"delete_btn_{req_id}"):
+                        delete_request(req_id)
+                        st.success(f"Deleted request {req_id}")
 
     else:
         st.info("No requests available")
+
 
     st.subheader("Manage Item Availability")
     items = get_all_items()
@@ -269,9 +325,9 @@ def admin_dashboard():
             )
             if new_availability != current_availability:
                 update_item_availability(item["particular"], new_availability)
-                st.rerun()  
-                
-                
+                st.rerun()
+
+
     st.subheader("Send Message to Users")
     user_emails = list(set(req["email"] for req in requests if req.get("email")))
     selected_email = st.selectbox("Select Email", [""] + user_emails, key="msg_email_select")
@@ -289,7 +345,7 @@ def admin_dashboard():
 
 
 def main():
-    
+
     if st.session_state.is_user_logged_in:
         user_request_form()
     elif st.session_state.is_admin:
