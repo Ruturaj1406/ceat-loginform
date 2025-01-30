@@ -1,8 +1,14 @@
-
 import streamlit as st
 import re
 import datetime
-from database import get_all_requests, update_request_status, insert_request, delete_request
+from database import (
+    get_all_requests,
+    update_request_status,
+    insert_request,
+    delete_request,
+    get_all_items,
+    update_item_availability,
+)
 from mail import send_email
 
 
@@ -18,68 +24,13 @@ background_style = f"""
 }}
 </style>
 """
-
-
 st.markdown(background_style, unsafe_allow_html=True)
+
 
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "admin123"
-
 DEPARTMENTS = ["Digital", "IT", "HR", "Finance", "Operations"]
 
-ITEMS_LIST = [
-    {"particular": "A3 ENVELOPE GREEN"},
-    {"particular": "A3 PAPER"},
-    {"particular": "A3 TRANSPARENT FOLDER"},
-    {"particular": "A4 ENVELOPE GREEN"},
-    {"particular": "A4 LOGO ENVOLOP"},
-    {"particular": "A4 PAPER"},
-    {"particular": "A4 TRANSPARENT FOLDER"},
-    {"particular": "BINDER CLIP 19MM"},
-    {"particular": "BINDER CLIP 25MM"},
-    {"particular": "BINDER CLIP 41MM"},
-    {"particular": "BOX FILE"},
-    {"particular": "C D MARKER"},
-    {"particular": "CALCULATOR"},
-    {"particular": "CARBON PAPERS"},
-    {"particular": "CELLO TAPE"},
-    {"particular": "CUTTER"},
-    {"particular": "DUSTER"},
-    {"particular": "ERASER"},
-    {"particular": "FEVI STICK"},
-    {"particular": "GEL PEN BLACK"},
-    {"particular": "HIGH LIGHTER"},
-    {"particular": "L FOLDER"},
-    {"particular": "LETTER HEAD"},
-    {"particular": "LOGO ENVOLOP SMALL"},
-    {"particular": "NOTE PAD"},
-    {"particular": "PEN"},
-    {"particular": "PENCIL"},
-    {"particular": "PERMANENT MARKER"},
-    {"particular": "PUNCHING MACHINE"},
-    {"particular": "PUSH PIN"},
-    {"particular": "REGISTER"},
-    {"particular": "ROOM SPRAY"},
-    {"particular": "RUBBER BAND BAG"},
-    {"particular": "SCALE"},
-    {"particular": "SCISSOR"},
-    {"particular": "FILE SEPARATOR"},
-    {"particular": "SHARPENER"},
-    {"particular": "SKETCH PEN"},
-    {"particular": "SILVER PEN"},
-    {"particular": "SPRING FILE"},
-    {"particular": "STAMP PAD"},
-    {"particular": "STAMP PAD INK"},
-    {"particular": "STAPLER"},
-    {"particular": "STAPLER PIN BIG"},
-    {"particular": "STAPLER PIN SMALL"},
-    {"particular": "STICKY NOTE"},
-    {"particular": "TRANSPARENT FILE"},
-    {"particular": "U PIN"},
-    {"particular": "VISTING CARD HOLDER"},
-    {"particular": "WHITE BOARD MARKER"},
-    {"particular": "WHITE INK"},
-]
 
 if 'is_user_logged_in' not in st.session_state:
     st.session_state.is_user_logged_in = False
@@ -92,11 +43,13 @@ if 'is_admin' not in st.session_state:
 
 
 def validate_email(email):
+   
     email_regex = r'^[a-zA-Z0-9_.+-]+@(gmail\.com|ceat\.com)$'
     return re.match(email_regex, email) is not None
 
 
 def user_login():
+    
     st.title("User Login")
     emp_id = st.text_input("Employee ID", key="user_emp_id")
     email = st.text_input("Email", key="user_email")
@@ -119,7 +72,6 @@ def user_login():
 
 
 def user_request_form():
-
     if st.session_state.show_login_success:
         st.success("Login successful!")
         st.session_state.show_login_success = False
@@ -131,13 +83,17 @@ def user_request_form():
     if "selected_items" not in st.session_state:
         st.session_state.selected_items = {}
 
+    
+    items = get_all_items()
 
+  
     search_query = st.text_input("Search Items", key="item_search")
-    filtered_items = [item for item in ITEMS_LIST if search_query.lower() in item["particular"].lower()]
+    filtered_items = [item for item in items if search_query.lower() in item["particular"].lower()]
 
     st.subheader("Add Items")
     for idx, item in enumerate(filtered_items):
         item_name = item["particular"]
+        item_available = item["available"]
         item_key = f"item_{item_name}_{idx}"
 
         if item_name not in st.session_state.selected_items:
@@ -145,15 +101,28 @@ def user_request_form():
 
         col1, col2 = st.columns([4, 1])
         with col1:
-            if st.checkbox(item_name,
-                           value=st.session_state.selected_items[item_name]["selected"],
-                           key=f"chk_{item_key}"):
-                st.session_state.selected_items[item_name]["selected"] = True
+            if item_available:
+               
+                if st.checkbox(
+                        item_name,
+                        value=st.session_state.selected_items[item_name]["selected"],
+                        key=f"chk_{item_key}"
+                ):
+                    st.session_state.selected_items[item_name]["selected"] = True
+                else:
+                    st.session_state.selected_items[item_name]["selected"] = False
+                    st.session_state.selected_items[item_name]["quantity"] = 1
             else:
-                st.session_state.selected_items[item_name]["selected"] = False
-                st.session_state.selected_items[item_name]["quantity"] = 1
+                
+                st.checkbox(
+                    item_name,
+                    value=False,
+                    key=f"chk_{item_key}",
+                    disabled=True
+                )
+                st.caption(":red[Currently Unavailable]")
 
-        if st.session_state.selected_items[item_name]["selected"]:
+        if item_available and st.session_state.selected_items[item_name]["selected"]:
             with col2:
                 quantity = st.number_input(
                     f"Qty for {item_name}",
@@ -162,12 +131,23 @@ def user_request_form():
                     key=f"qty_{item_key}",
                 )
                 st.session_state.selected_items[item_name]["quantity"] = quantity
+        else:
+            with col2:
+                st.write("")  
 
-    selected_items = {item: details for item, details in st.session_state.selected_items.items() if details["selected"]}
+    
+    available_items = [item["particular"] for item in items if item["available"]]
+    selected_items = {
+        item: details
+        for item, details in st.session_state.selected_items.items()
+        if details["selected"] and item in available_items
+    }
+
     if selected_items:
         st.subheader("Selected Items")
         for item_name, details in selected_items.items():
             st.write(f"Item: {item_name}, Quantity: {details['quantity']}")
+
 
     col1, col2 = st.columns([1, 3])
     with col1:
@@ -203,7 +183,7 @@ def user_request_form():
 
 
 def admin_login():
-
+    
     with st.sidebar:
         st.title("Admin Login")
         username = st.text_input("Username", key="admin_username_input")
@@ -222,12 +202,11 @@ def admin_login():
 
 
 def admin_dashboard():
-   
+    
     with st.sidebar:
         st.title("Admin Panel")
         st.subheader("Login Information")
         st.write(f"Username: {ADMIN_USERNAME}")
-
 
         if st.button("Logout", key="admin_logout_btn"):
             st.session_state.is_admin = False
@@ -275,6 +254,24 @@ def admin_dashboard():
     else:
         st.info("No requests available")
 
+    st.subheader("Manage Item Availability")
+    items = get_all_items()
+    for item in items:
+        col1, col2 = st.columns([4, 1])
+        with col1:
+            st.write(item["particular"])
+        with col2:
+            current_availability = item["available"]
+            new_availability = st.checkbox(
+                f"Available {item['particular']}",
+                value=current_availability,
+                key=f"available_{item['particular']}"
+            )
+            if new_availability != current_availability:
+                update_item_availability(item["particular"], new_availability)
+                st.rerun()  
+                
+                
     st.subheader("Send Message to Users")
     user_emails = list(set(req["email"] for req in requests if req.get("email")))
     selected_email = st.selectbox("Select Email", [""] + user_emails, key="msg_email_select")
@@ -292,6 +289,7 @@ def admin_dashboard():
 
 
 def main():
+    
     if st.session_state.is_user_logged_in:
         user_request_form()
     elif st.session_state.is_admin:
