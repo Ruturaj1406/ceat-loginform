@@ -4,22 +4,22 @@ from email.mime.multipart import MIMEMultipart
 from email_validator import validate_email, EmailNotValidError
 
 def send_email(to_email, admin_name, request_details, subject, body):
-    from_email = 'Ruturajnavale1406@gmail.com'  # Replace with your email
-    password = 'dgfy rkwj efij xcbb'  # Replace with your app password
+    from_email = 'Ruturajnavale1406@gmail.com'
+    password = 'dgfy rkwj efij xcbb'
 
-    # Validate recipient's email address
+
     try:
         validate_email(to_email)
     except EmailNotValidError as e:
         print(f"Invalid email address: {e}")
         return
 
-    # Check request details for missing keys and provide safe defaults
+
     name = request_details.get('name', 'User')
     email = request_details.get('email', 'N/A')
     description = request_details.get('description', 'N/A')
 
-    # Build the HTML content based on the subject
+
     if "approved" in subject.lower():
         html_content = f"""
         <html>
@@ -87,23 +87,23 @@ def send_email(to_email, admin_name, request_details, subject, body):
                         <td>{description}</td>
                     </tr>
                 </table>
-                <p><strong>Processed by:</strong> {admin_name}</p>
+                <p><strong>Processed by:</strong> System</p>  
+
                 <p>You will be notified once the request has been approved or rejected.</p>
             </body>
         </html>
         """
 
-    # Prepare the email
     msg = MIMEMultipart()
     msg['Subject'] = subject
     msg['From'] = from_email
     msg['To'] = to_email
     msg.attach(MIMEText(html_content, 'html'))
 
-    # Send the email using SMTP
+
     try:
         with smtplib.SMTP('smtp.gmail.com', 587) as server:
-            server.starttls()  # Upgrade connection to secure
+            server.starttls()
             server.login(from_email, password)
             server.sendmail(from_email, to_email, msg.as_string())
         print(f"Email successfully sent to {to_email}")

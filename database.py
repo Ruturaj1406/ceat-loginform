@@ -3,10 +3,9 @@ import re
 
 
 def get_db_connection():
-   
     try:
         conn = sqlite3.connect('requests.db')
-        conn.row_factory = sqlite3.Row  
+        conn.row_factory = sqlite3.Row
         return conn
     except sqlite3.Error as e:
         print(f"Error connecting to database: {e}")
@@ -14,7 +13,6 @@ def get_db_connection():
 
 
 def initialize_items():
-   
     conn = get_db_connection()
     if conn is None:
         print("Database connection failed.")
@@ -22,7 +20,22 @@ def initialize_items():
 
     try:
         cursor = conn.cursor()
-       
+
+
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                email TEXT NOT NULL,
+                emp_id TEXT NOT NULL,
+                department TEXT NOT NULL,
+                description TEXT NOT NULL,
+                status TEXT DEFAULT 'Pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+
+
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS items (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -31,7 +44,6 @@ def initialize_items():
             )
         ''')
 
-        
         default_items = [
             ("A3 ENVELOPE GREEN", True),
             ("A3 PAPER", True),
@@ -86,7 +98,6 @@ def initialize_items():
             ("WHITE INK", True),
         ]
 
-        
         for item in default_items:
             cursor.execute('''
                 INSERT OR IGNORE INTO items (particular, available)
@@ -102,7 +113,6 @@ def initialize_items():
 
 
 def get_all_items():
-    
     conn = get_db_connection()
     if conn is None:
         print("Database connection failed.")
@@ -121,7 +131,6 @@ def get_all_items():
 
 
 def update_item_availability(particular, available):
-    
     conn = get_db_connection()
     if conn is None:
         print("Database connection failed.")
@@ -143,7 +152,6 @@ def update_item_availability(particular, available):
 
 
 def insert_user_with_items(emp_id, email, selected_items):
-   
     conn = get_db_connection()
     if conn is None:
         print("Database connection failed.")
@@ -152,13 +160,12 @@ def insert_user_with_items(emp_id, email, selected_items):
     try:
         cursor = conn.cursor()
 
-        
         cursor.execute('''
             INSERT INTO users (emp_id, email)
             VALUES (?, ?)
         ''', (emp_id, email))
-        user_id = cursor.lastrowid  
-        
+        user_id = cursor.lastrowid
+
         for item in selected_items:
             cursor.execute('''
                 INSERT INTO user_items (user_id, item)
@@ -174,12 +181,10 @@ def insert_user_with_items(emp_id, email, selected_items):
 
 
 def is_valid_email(email):
-    
     return email.endswith('@gmail.com') or email.endswith('@ceat.com')
 
 
-def insert_request(name, email, description):
-    
+def insert_request(name, email, description, emp_id, department):
     if not is_valid_email(email):
         print("Invalid email address. It must end with '@gmail.com' or '@ceat.com'.")
         return
@@ -192,8 +197,9 @@ def insert_request(name, email, description):
     try:
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO requests (name, email, description, status) 
-            VALUES (?, ?, ?, ?)''', (name, email, description, 'Pending'))
+            INSERT INTO requests (name, email, description, emp_id, department, status) 
+            VALUES (?, ?, ?, ?, ?, ?)''',
+            (name, email, description, emp_id, department, 'Pending'))
         conn.commit()
         print(f"Request by {name} inserted successfully.")
     except sqlite3.Error as e:
@@ -203,7 +209,6 @@ def insert_request(name, email, description):
 
 
 def get_all_requests():
-    
     conn = get_db_connection()
     if conn is None:
         print("Database connection failed.")
@@ -213,7 +218,7 @@ def get_all_requests():
         cursor = conn.cursor()
         cursor.execute('SELECT * FROM requests')
         requests = cursor.fetchall()
-        return [dict(req) for req in requests]  
+        return [dict(req) for req in requests]
     except sqlite3.Error as e:
         print(f"Error fetching requests: {e}")
         return []
@@ -222,7 +227,6 @@ def get_all_requests():
 
 
 def update_request_status(request_id, status):
-    
     conn = get_db_connection()
     if conn is None:
         print("Database connection failed.")
@@ -243,7 +247,6 @@ def update_request_status(request_id, status):
 
 
 def reset_request_ids():
-    
     conn = get_db_connection()
     if conn is None:
         print("Database connection failed.")
@@ -251,17 +254,17 @@ def reset_request_ids():
 
     try:
         cursor = conn.cursor()
-        
+
         cursor.execute('CREATE TEMPORARY TABLE temp_requests AS SELECT * FROM requests')
-        
+
         cursor.execute('DELETE FROM requests')
-        
+
         cursor.execute('DELETE FROM sqlite_sequence WHERE name="requests"')
-        
+
         cursor.execute('''
             INSERT INTO requests (name, email, description, status) 
             SELECT name, email, description, status FROM temp_requests''')
-        
+
         cursor.execute('DROP TABLE temp_requests')
         conn.commit()
         print("Request IDs reset successfully.")
@@ -272,7 +275,6 @@ def reset_request_ids():
 
 
 def delete_request(request_id):
-    
     conn = get_db_connection()
     if conn is None:
         print("Database connection failed.")
@@ -285,7 +287,7 @@ def delete_request(request_id):
         if cursor.rowcount == 0:
             print(f"No request found with ID {request_id}.")
         else:
-            reset_request_ids()  # Reset IDs to maintain sequence after deletion
+            reset_request_ids()
             print(f"Request ID {request_id} deleted successfully.")
     except sqlite3.Error as e:
         print(f"Error deleting request: {e}")
