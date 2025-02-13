@@ -4,8 +4,8 @@ from email.mime.multipart import MIMEMultipart
 from email_validator import validate_email, EmailNotValidError
 
 def send_email(to_email, admin_name, request_details, subject, body):
-    from_email = 'Ruturajnavale1406@gmail.com'
-    password = 'dgfy rkwj efij xcbb'
+    from_email = 'Halol.smartfactory@ceat.com'
+    password = 'gdzdznbsysnrsfvj'
 
 
     try:
@@ -102,7 +102,7 @@ def send_email(to_email, admin_name, request_details, subject, body):
 
 
     try:
-        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+        with smtplib.SMTP('10.64.4.200', 25) as server:
             server.starttls()
             server.login(from_email, password)
             server.sendmail(from_email, to_email, msg.as_string())
