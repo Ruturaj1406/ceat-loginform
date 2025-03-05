@@ -60,11 +60,12 @@ def validate_email(email):
     email_regex = r'^[a-zA-Z0-9_.+-]+@(ceat\.com|gmail\.com)$'
     return re.match(email_regex, email) is not None
 
-# Registration function
+# Registration function (Updated)
 def register():
     st.title("Register")
     email = st.text_input("Email", key="register_email")
     emp_id = st.text_input("Official Employee ID", key="register_emp_id")
+    confirm_emp_id = st.text_input("Confirm Employee ID", key="confirm_emp_id")  # New confirmation field
     
     col1, col2 = st.columns(2)
     with col1:
@@ -73,12 +74,14 @@ def register():
         go_to_login_btn = st.button("Go to Login", key="go_to_login_btn")
 
     if register_btn:
-        if not email or not emp_id:
+        if not email or not emp_id or not confirm_emp_id:
             st.error("All fields are required.")
+        elif emp_id != confirm_emp_id:
+            st.error("Employee ID and confirmation do not match.")
         elif not validate_email(email):
             st.error("Invalid email format (must end with @ceat.com or @gmail.com).")
         else:
-            success = register_user(email, emp_id, emp_id)
+            success = register_user(email, emp_id, emp_id)  # Assuming password is emp_id
             if success:
                 st.success(f"Registration successful! Your Employee ID is {emp_id}. Please log in.")
                 st.session_state.page = "login"
