@@ -172,21 +172,3 @@ def send_email(to_email, admin_name, subject, body, request_details=None, delive
         print(f"SMTP Authentication Error: {e}")
     except Exception as e:
         print(f"Error sending email: {e}")
-
-# Example usage (for testing purposes, remove in production)
-if __name__ == "__main__":
-    # Test email for "Delivered" status
-    request_details = {
-        "name": "Test User",
-        "email": "testuser@example.com",
-        "description": "A4 PAPER (Qty: 10), PEN (Qty: 5)"
-    }
-    send_email(
-        to_email="testuser@example.com",
-        admin_name="Store Team",
-        subject="Request Delivered",
-        body="Your item has been delivered.",
-        request_details=request_details,
-        delivered_to="John Doe",
-        delivery_time="March 05, 2025 14:30:00"
-    )
