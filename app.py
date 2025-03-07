@@ -14,13 +14,14 @@ from database import (
     delete_request,
     update_item_quantity,
     get_request_items,
-    get_all_users
+    get_all_users,
+    get_requests_by_department,
 )
 from mail import send_email
 
 # Load external CSS
-def load_css():
-    with open("styles.css", "r") as f:
+def load_css(file_path):
+    with open(file_path) as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 # Constants
@@ -30,6 +31,16 @@ STORE_USERNAME = "store"
 STORE_PASSWORD = "store123"
 DEPARTMENTS = ["IT", "Digital", "HR"]
 DISPLAY_TIMEZONE = 'Asia/Kolkata'
+DEPARTMENT_HEADS = {
+    "IT": {"username": "it", "password": "it123"},
+    "Digital": {"username": "digital", "password": "digital123"},
+    "HR": {"username": "hr", "password": "hr123"},
+}
+DEPARTMENT_EMAILS = {
+    "IT": "sdmdkla@gmail.com",      # IT department email
+    "Digital": "sde1n@ceat.com",    # Digital department email
+    "HR": "sd12@ceat.com",          # HR department email
+}
 
 # Helper function to format timestamps
 def format_timestamp(timestamp_str, tz_name=DISPLAY_TIMEZONE):
@@ -44,6 +55,20 @@ def format_timestamp(timestamp_str, tz_name=DISPLAY_TIMEZONE):
         print(f"Error parsing timestamp: {timestamp_str} - {e}")
         return "Invalid date"
 
+# Loading animation function
+def show_loading_animation(placeholder, message="Processing..."):
+    placeholder.markdown(
+        """
+        <div class="loading-container">
+            <img src="https://blogger.googleusercontent.com/img/a/AVvXsEj3RLW4UZW49PBvV7pWj15YHMUuWCy49nXiRXzUuGc73_FBhacqQ6O5DnXRGwoyXAS2ZcEPoECGqVpTF2pqWuvakOEEZhbQ_iRNtQ8oYAMfviKUGhvPB3pCMX7iUnrU4KbNw8Zot0yxAZpztyLyZldljv-XRTJTYGs6xTsd8TSuVPUyrC8qfLab5kTTZQ4" 
+                 alt="Loading..." style="width: 100px; height: 100px; display: block; margin: 0 auto;">
+            <p style="text-align: center; color: #333;">{}</p>
+        </div>
+        """.format(message),
+        unsafe_allow_html=True
+    )
+    time.sleep(2)  # Simulate processing time; adjust as needed
+
 # Initialize session state
 if 'page' not in st.session_state:
     st.session_state.clear()
@@ -51,7 +76,9 @@ if 'page' not in st.session_state:
     st.session_state.is_user_logged_in = False
     st.session_state.is_admin = False
     st.session_state.is_store = False
+    st.session_state.is_dept_head = False
     st.session_state.user_details = {}
+    st.session_state.dept_head_department = None
     st.session_state.show_login_success = False
     st.session_state.request_submitted = False
 
@@ -60,12 +87,19 @@ def validate_email(email):
     email_regex = r'^[a-zA-Z0-9_.+-]+@(ceat\.com|gmail\.com)$'
     return re.match(email_regex, email) is not None
 
-# Registration function (Updated)
+# Authentication for department heads
+def authenticate_dept_head(username, password):
+    for dept, creds in DEPARTMENT_HEADS.items():
+        if creds["username"] == username and creds["password"] == password:
+            return dept
+    return None
+
+# Registration function
 def register():
     st.title("Register")
     email = st.text_input("Email", key="register_email")
     emp_id = st.text_input("Official Employee ID", key="register_emp_id")
-    confirm_emp_id = st.text_input("Confirm Employee ID", key="confirm_emp_id")  # New confirmation field
+    confirm_emp_id = st.text_input("Confirm Employee ID", key="confirm_emp_id")
     
     col1, col2 = st.columns(2)
     with col1:
@@ -79,9 +113,9 @@ def register():
         elif emp_id != confirm_emp_id:
             st.error("Employee ID and confirmation do not match.")
         elif not validate_email(email):
-            st.error("Invalid email format (must end with @ceat.com or @gmail.com).")
+            st.error("Invalid email format.")
         else:
-            success = register_user(email, emp_id, emp_id)  # Assuming password is emp_id
+            success = register_user(email, emp_id, emp_id)
             if success:
                 st.success(f"Registration successful! Your Employee ID is {emp_id}. Please log in.")
                 st.session_state.page = "login"
@@ -135,7 +169,7 @@ def admin_login_main():
         if not username or not password or not admin_email:
             st.error("All fields are required.")
         elif not validate_email(admin_email):
-            st.error("Invalid email format (must end with @ceat.com or @gmail.com).")
+            st.error("Invalid email format.")
         elif username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
             st.session_state.is_admin = True
             st.session_state.login_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -158,6 +192,21 @@ def store_login():
         else:
             st.error("Invalid credentials.")
 
+# Department Head login function
+def dept_head_login():
+    st.title("Department Head Login")
+    username = st.text_input("Username", key="dept_head_username")
+    password = st.text_input("Password", type="password", key="dept_head_password")
+    if st.button("Login", key="dept_head_login_btn"):
+        dept = authenticate_dept_head(username, password)
+        if dept:
+            st.session_state.is_dept_head = True
+            st.session_state.dept_head_department = dept
+            st.session_state.login_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            st.rerun()
+        else:
+            st.error("Invalid credentials.")
+
 # User request form
 def user_request_form():
     if st.session_state.get("show_login_success", False):
@@ -169,7 +218,6 @@ def user_request_form():
     user_email = st.session_state.user_details.get("email", "")
     st.text_input("Email", value=user_email, disabled=True, key="request_email")
 
-    # Department selection
     st.selectbox(
         "Select Department",
         options=DEPARTMENTS,
@@ -178,17 +226,13 @@ def user_request_form():
     if "selected_department" in st.session_state:
         st.session_state.user_details["department"] = st.session_state.selected_department
 
-    # Initialize selected_items if not present
     if "selected_items" not in st.session_state:
         st.session_state.selected_items = {}
 
-    # Fetch items and create item map
     items = get_all_items()
     item_map = {item["id"]: {"particular": item["particular"], "quantity": item["quantity"]} for item in items}
 
-    # Add Items section with quantity selection
     with st.expander("Add Items", expanded=True):
-        # List available items (not selected and quantity > 0) with None as default
         available_item_ids = [None] + [item["id"] for item in items if item["id"] not in st.session_state.selected_items and item["quantity"] > 0]
         selected_item_id = st.selectbox(
             "Select item to add",
@@ -197,7 +241,6 @@ def user_request_form():
             key="add_item_select"
         )
         if selected_item_id is not None:
-            # Show quantity input if an item is selected
             max_qty = item_map[selected_item_id]["quantity"]
             qty = st.number_input(
                 "Quantity",
@@ -215,7 +258,6 @@ def user_request_form():
         else:
             st.write("Please select an item to add.")
 
-    # Display selected items without quantity edit option
     if st.session_state.selected_items:
         st.subheader("Selected Items")
         for item_id in list(st.session_state.selected_items.keys()):
@@ -231,7 +273,6 @@ def user_request_form():
     else:
         st.info("No items selected yet.")
 
-    # Suggestion and submit
     suggestion = st.text_area("Suggestion for Admin (optional)", key="suggestion_input")
     submit_button = st.button("Submit Request", key="submit_request_btn")
 
@@ -250,18 +291,8 @@ def user_request_form():
             user_details = st.session_state.user_details
 
             animation_placeholder = st.empty()
-            animation_placeholder.markdown(
-                """
-                <div class="loading-container">
-                    <img src="https://blogger.googleusercontent.com/img/a/AVvXsEj3RLW4UZW49PBvV7pWj15YHMUuWCy49nXiRXzUuGc73_FBhacqQ6O5DnXRGwoyXAS2ZcEPoECGqVpTF2pqWuvakOEEZhbQ_iRNtQ8oYAMfviKUGhvPB3pCMX7iUnrU4KbNw8Zot0yxAZpztyLyZldljv-XRTJTYGs6xTsd8TSuVPUyrC8qfLab5kTTZQ4" 
-                         alt="Loading..." style="width: 100px; height: 100px; display: block; margin: 0 auto;">
-                    <p style="text-align: center; color: #333;">Processing your request...</p>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-            time.sleep(2)
-
+            show_loading_animation(animation_placeholder, "Processing your request...")
+            
             success, message = insert_request(
                 user_name,
                 user_details["email"],
@@ -277,7 +308,7 @@ def user_request_form():
             if success:
                 try:
                     subject = "Request Submission Confirmation"
-                    body = f"Dear {user_name},\nYour request has been successfully submitted.\nThank you for using our service!"
+                    body = f"Dear {user_name},\nYour request has been successfully submitted and is awaiting department approval.\nThank you for using our service!"
                     send_email(
                         to_email=user_email,
                         admin_name="Admin",
@@ -313,9 +344,9 @@ def display_my_orders():
             st.write(f"**Request ID:** {req_id}")
             st.write(f"**Date Submitted:** {created_at}")
             st.write(f"**Description:** {description}")
-            if status == "Approved":
+            if status == "Admin Approved":
                 st.markdown(f"**Status:** <span style='color:green'>{status}</span>", unsafe_allow_html=True)
-            elif status == "Rejected":
+            elif status in ["Department Rejected", "Admin Rejected"]:
                 st.markdown(f"**Status:** <span style='color:red'>{status}</span>", unsafe_allow_html=True)
             elif status == "Delivered":
                 st.markdown(f"**Status:** <span style='color:green'>{status}</span>", unsafe_allow_html=True)
@@ -347,6 +378,77 @@ def user_dashboard():
     with tab2:
         display_my_orders()
 
+# Department Head dashboard
+def dept_head_dashboard():
+    with st.sidebar:
+        st.header("Department Head Panel")
+        st.write(f"Department: {st.session_state.dept_head_department}")
+        if st.button("Logout", key="dept_head_logout_btn"):
+            st.session_state.is_dept_head = False
+            st.session_state.dept_head_department = None
+            st.session_state.login_time = None
+            st.rerun()
+
+    st.title(f"{st.session_state.dept_head_department} Department Dashboard")
+
+    # Fetch all requests for this department (no filtering by status)
+    requests = get_requests_by_department(st.session_state.dept_head_department)
+
+    if requests:
+        st.subheader(f"All Requests for {st.session_state.dept_head_department}")
+        for req in requests:
+            req_id = req["id"]
+            emp_id = req["emp_id"]
+            name = req["name"]
+            email = req["email"]
+            description = req["description"]
+            status = req["status"]
+            created_at = format_timestamp(req["created_at"])
+            updated_at = format_timestamp(req.get("updated_at", req["created_at"]))
+
+            with st.expander(f"Request ID: {req_id} - {status}", expanded=False):
+                st.write(f"**Employee ID:** {emp_id}")
+                st.write(f"**Name:** {name}")
+                st.write(f"**Email:** {email}")
+                st.write(f"**Description:** {description}")
+                st.write(f"**Status:** {status}")
+                st.write(f"**Created At:** {created_at}")
+                st.write(f"**Last Updated:** {updated_at}")
+
+                animation_placeholder = st.empty()
+
+                # Show Approve/Reject buttons only for "Pending Department Approval"
+                if status == "Pending Department Approval":
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button(f"Approve ", key=f"approve_{req_id}"):
+                            show_loading_animation(animation_placeholder, "Approving request...")
+                            success, message = update_request_status(req_id, "Department Approved")
+                            animation_placeholder.empty()
+                            if success:
+                                subject = "Request Approved by Department"
+                                body = f"Your request {req_id} has been approved by the department head."
+                                send_email(email, "Department Head", subject, body, request_details=req)
+                                st.success(f"Approved request {req_id}")
+                            else:
+                                st.error(f"Failed to approve request {req_id}: {message}")
+                            st.rerun()
+                    with col2:
+                        if st.button(f"Reject ", key=f"reject_{req_id}"):
+                            show_loading_animation(animation_placeholder, "Rejecting request...")
+                            success, message = update_request_status(req_id, "Department Rejected")
+                            animation_placeholder.empty()
+                            if success:
+                                subject = "Request Rejected by Department"
+                                body = f"Your request {req_id} has been rejected by the department head."
+                                send_email(email, "Department Head", subject, body, request_details=req)
+                                st.success(f"Rejected request {req_id}")
+                            else:
+                                st.error(f"Failed to reject request {req_id}: {message}")
+                            st.rerun()
+    else:
+        st.info(f"No requests found for {st.session_state.dept_head_department}.")
+
 # Admin dashboard
 def admin_dashboard():
     with st.sidebar:
@@ -359,10 +461,12 @@ def admin_dashboard():
 
     st.title("Admin Dashboard")
 
-    # Fetch items once
-    items = get_all_items()
+    # Fetch all requests and filter to exclude those before "Department Approved"
+    all_requests = get_all_requests()
+    requests = [req for req in all_requests if req["status"] not in ["Pending Department Approval"]]
 
-    # Low Stock Alerts section
+    # Low stock alerts
+    items = get_all_items()
     low_stock_items = [item for item in items if item["quantity"] <= 10]
     if low_stock_items:
         st.subheader("Low Stock Alerts")
@@ -372,59 +476,108 @@ def admin_dashboard():
     else:
         st.info("All items are sufficiently stocked.")
 
-    requests = get_all_requests()
     if requests:
+        st.subheader("All Requests Post-Department Review")
         for req in requests:
-            req_id = req.get("id", "N/A")
-            emp_id = req.get("emp_id", "N/A")
-            name = req.get("name", "N/A")
-            department = req.get("department", "N/A")
-            email = req.get("email", "N/A")
-            status = req.get("status", "Pending")
-            description = req.get("description", "N/A")
-            suggestion = req.get("suggestion", "N/A")
+            req_id = req["id"]
+            emp_id = req["emp_id"]
+            name = req["name"]
+            department = req["department"]
+            email = req["email"]
+            description = req["description"]
+            suggestion = req["suggestion"] or "None"
+            status = req["status"]
+            updated_at = format_timestamp(req.get("updated_at", req["created_at"]))
 
-            with st.expander(f"Request ID: {req_id}", expanded=False):
+            with st.expander(f"Request ID: {req_id} - {status}", expanded=False):
                 st.write(f"**Employee ID:** {emp_id}")
                 st.write(f"**Name:** {name}")
                 st.write(f"**Department:** {department}")
                 st.write(f"**Email:** {email}")
                 st.write(f"**Description:** {description}")
                 st.write(f"**Suggestion:** {suggestion}")
-                st.write(f"**Status:** {status}")
-                st.write(f"**Created At:** {format_timestamp(req['created_at'])}")
-                st.write(f"**Updated At:** {format_timestamp(req['updated_at'])}")
+                st.write(f"**Current Status:** {status}")
+                st.write(f"**Last Updated:** {updated_at}")
 
-                status_update = st.radio(
-                    f"Status for {req_id}",
-                    ["Pending", "Approved", "Rejected", "Packing", "Dispatched", "Delivered"],
-                    index=["Pending", "Approved", "Rejected", "Packing", "Dispatched", "Delivered"].index(status),
-                    key=f"status_radio_{req_id}"
-                )
+                animation_placeholder = st.empty()
 
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button(f"Update {req_id}", key=f"update_btn_{req_id}"):
-                        success, message = update_request_status(req_id, status_update)
+                # Show Approve/Reject buttons only for "Department Approved"
+                if status == "Department Approved":
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button(f"Approve ", key=f"admin_approve_{req_id}"):
+                            show_loading_animation(animation_placeholder, "Approving request...")
+                            # Update request status to "Admin Approved"
+                            success, message = update_request_status(req_id, "Admin Approved")
+                            if success:
+                                # Fetch items associated with this request
+                                request_items = get_request_items(req_id)
+                                items_updated = True
+                                # Reduce quantities in inventory
+                                for item in request_items:
+                                    item_id = item["item_id"]
+                                    requested_qty = item["quantity"]
+                                    # Get current item details
+                                    current_items = get_all_items()
+                                    current_item = next((i for i in current_items if i["id"] == item_id), None)
+                                    if current_item:
+                                        new_quantity = max(0, current_item["quantity"] - requested_qty)
+                                        if not update_item_quantity(item_id, new_quantity):
+                                            items_updated = False
+                                            st.error(f"Failed to update quantity for item ID {item_id}")
+                                            break
+                                    else:
+                                        items_updated = False
+                                        st.error(f"Item ID {item_id} not found in inventory")
+                                        break
+
+                                if items_updated:
+                                    subject = "Request Approved by Admin"
+                                    body = f"Your request {req_id} has been approved by the admin. Item quantities have been updated."
+                                    send_email(email, "Admin", subject, body, request_details=req)
+                                    st.success(f"Updated request {req_id} to Admin Approved and reduced item quantities")
+                                else:
+                                    st.warning(f"Updated request {req_id} to Admin Approved, but item quantities update failed")
+                            else:
+                                st.error(f"Failed to update request {req_id}: {message}")
+                            animation_placeholder.empty()
+                            st.rerun()
+                    with col2:
+                        if st.button(f"Reject ", key=f"admin_reject_{req_id}"):
+                            show_loading_animation(animation_placeholder, "Rejecting request...")
+                            success, message = update_request_status(req_id, "Admin Rejected")
+                            animation_placeholder.empty()
+                            if success:
+                                subject = "Request Rejected by Admin"
+                                body = f"Your request {req_id} has been rejected by the admin."
+                                send_email(email, "Admin", subject, body, request_details=req)
+                                st.success(f"Updated request {req_id} to Admin Rejected")
+                            else:
+                                st.error(f"Failed to update request {req_id}: {message}")
+                            st.rerun()
+
+                # Delete button visible and functional for all statuses with improved error handling
+                if st.button(f"Delete Request ", key=f"delete_{req_id}"):
+                    show_loading_animation(animation_placeholder, "Deleting request...")
+                    try:
+                        success = delete_request(req_id)
+                        animation_placeholder.empty()
                         if success:
-                            subject = f"Request {status_update}"
-                            body = f"Your request {req_id} has been {status_update.lower()}.\n\nDetails:\n{description}"
-                            send_email(email, "Admin", subject, body, request_details=req)
-                            st.success(f"Updated request {req_id}")
+                            st.success(f"Deleted request {req_id}")
+                            st.rerun()
                         else:
-                            st.error(f"Failed to update request {req_id}: {message}")
-                        st.rerun()
-                with col2:
-                    if st.button(f"Delete {req_id}", key=f"delete_btn_{req_id}"):
-                        delete_request(req_id)
-                        st.success(f"Deleted request {req_id}")
-                        st.rerun()
+                            st.error(f"Failed to delete request {req_id}. Check server logs or database for details.")
+                    except Exception as e:
+                        animation_placeholder.empty()
+                        st.error(f"Error deleting request {req_id}: {str(e)}. Please check database connection or constraints.")
     else:
-        st.info("No requests available")
+        st.info("No requests have reached Department Approved status yet.")
 
+    # Manage Item Availability
     with st.expander("Manage Item Availability", expanded=False):
         search_query = st.text_input("Search Items", key="admin_item_search")
         filtered_items = [item for item in items if search_query.lower() in item["particular"].lower()]
+        animation_placeholder = st.empty()
         for item in filtered_items:
             col1, col2 = st.columns([4, 1])
             with col1:
@@ -440,28 +593,32 @@ def admin_dashboard():
                     key=f"qty_{item['id']}"
                 )
                 if st.button(f"Update {item['particular']}", key=f"update_qty_{item['id']}"):
+                    show_loading_animation(animation_placeholder, f"Updating {item['particular']} quantity...")
                     if update_item_quantity(item["id"], new_quantity):
+                        animation_placeholder.empty()
                         st.success(f"Updated {item['particular']} quantity to {new_quantity}")
                         st.rerun()
                     else:
+                        animation_placeholder.empty()
                         st.error(f"Failed to update {item['particular']} quantity")
 
-    # Send Email to User section
+    # Send Email to User
     st.subheader("Send Email to User")
     users = get_all_users()
     if users:
-        # Format dropdown options as "emp_id - email"
         user_options = [f"{emp_id} - {email}" for emp_id, email in users]
         selected_user = st.selectbox(
             "Select User",
-            options=range(len(users)),  # Use indices as options
-            format_func=lambda i: user_options[i]  # Display "emp_id - email"
+            options=range(len(users)),
+            format_func=lambda i: user_options[i]
         )
-        selected_email = users[selected_user][1]  # Extract email from selected tuple
+        selected_email = users[selected_user][1]
         email_subject = st.text_input("Email Subject")
         email_body = st.text_area("Email Body")
+        animation_placeholder = st.empty()
         if st.button("Send Email"):
             if selected_email and email_subject and email_body:
+                show_loading_animation(animation_placeholder, "Sending email...")
                 try:
                     send_email(
                         to_email=selected_email,
@@ -470,14 +627,76 @@ def admin_dashboard():
                         body=email_body,
                         request_details=None
                     )
+                    animation_placeholder.empty()
                     st.success(f"Email sent to {selected_email}")
                 except Exception as e:
+                    animation_placeholder.empty()
                     st.error(f"Failed to send email: {e}")
             else:
                 st.warning("Please fill in all fields.")
     else:
         st.info("No users found.")
 
+    # Send Email to Department
+    st.subheader("Send Email to Department")
+    department_options = DEPARTMENTS
+    selected_department = st.selectbox(
+        "Select Department",
+        options=department_options,
+        key="dept_email_select"
+    )
+    dept_email_subject = st.text_input("Department Email Subject", key="dept_email_subject")
+    dept_email_body = st.text_area("Department Email Body", key="dept_email_body")
+    send_to_all_users = st.checkbox(
+        "Send to all users who have made requests in this department",
+        key="send_to_all_users"
+    )
+    animation_placeholder = st.empty()
+    if st.button("Send Department Email", key="send_dept_email_btn"):
+        if not selected_department or not dept_email_subject or not dept_email_body:
+            st.warning("Please fill in all fields.")
+        else:
+            show_loading_animation(animation_placeholder, "Sending department email...")
+            if send_to_all_users:
+                requests = get_requests_by_department(selected_department)
+                if requests:
+                    emails = list(set(req["email"] for req in requests))
+                    for email in emails:
+                        try:
+                            send_email(
+                                to_email=email,
+                                admin_name="Admin",
+                                subject=dept_email_subject,
+                                body=dept_email_body,
+                                request_details=None
+                            )
+                            st.success(f"Email sent to {email}")
+                        except Exception as e:
+                            st.error(f"Failed to send email to {email}: {e}")
+                    animation_placeholder.empty()
+                    st.success(f"Emails sent to {len(emails)} users in {selected_department}")
+                else:
+                    animation_placeholder.empty()
+                    st.info(f"No requests found for {selected_department}")
+            else:
+                dept_email = DEPARTMENT_EMAILS.get(selected_department, "")
+                if dept_email:
+                    try:
+                        send_email(
+                            to_email=dept_email,
+                            admin_name="Admin",
+                            subject=dept_email_subject,
+                            body=dept_email_body,
+                            request_details=None
+                        )
+                        animation_placeholder.empty()
+                        st.success(f"Email sent to {dept_email}")
+                    except Exception as e:
+                        animation_placeholder.empty()
+                        st.error(f"Failed to send email to {dept_email}: {e}")
+                else:
+                    animation_placeholder.empty()
+                    st.error(f"No email defined for {selected_department}")
 # Store dashboard
 def store_dashboard():
     with st.sidebar:
@@ -487,18 +706,24 @@ def store_dashboard():
             st.session_state.is_store = False
             st.session_state.login_time = None
             st.rerun()
+
     st.title("Store Dashboard")
-    requests = get_all_requests()
-    approved_requests = [req for req in requests if req["status"] in ["Approved", "Packing", "Dispatched", "Delivered"]]
+
+    # Fetch all requests and filter for "Admin Approved" and later statuses
+    all_requests = get_all_requests()
+    valid_statuses = ["Admin Approved", "Packing", "Dispatched", "Delivered"]
+    approved_requests = [req for req in all_requests if req["status"] in valid_statuses]
+
     if approved_requests:
+        st.subheader("Requests Ready for Processing")
         for req in approved_requests:
             req_id = req["id"]
             emp_id = req["emp_id"]
             name = req["name"]
             department = req["department"]
             email = req["email"]
-            status = req["status"]
             description = req["description"]
+            status = req["status"]
             updated_at = format_timestamp(req.get("updated_at", req["created_at"]))
 
             with st.expander(f"Request ID: {req_id} - {status}", expanded=False):
@@ -510,17 +735,23 @@ def store_dashboard():
                 st.write(f"**Current Status:** {status}")
                 st.write(f"**Last Updated:** {updated_at}")
 
-                if status == "Approved":
-                    if st.button(f"Start Packing for {req_id}", key=f"start_packing_{req_id}"):
+                animation_placeholder = st.empty()
+
+                if status == "Admin Approved":
+                    if st.button(f"Start Packing ", key=f"start_packing_{req_id}"):
+                        show_loading_animation(animation_placeholder, "Starting packing...")
                         success, message = update_request_status(req_id, "Packing")
+                        animation_placeholder.empty()
                         if success:
                             st.success(f"Started packing for request {req_id}")
                             st.rerun()
                         else:
                             st.error(f"Failed to update status to 'Packing' for request {req_id}: {message}")
                 elif status == "Packing":
-                    if st.button(f"Mark as Dispatched for {req_id}", key=f"dispatch_{req_id}"):
+                    if st.button(f"Mark as Dispatched ", key=f"dispatch_{req_id}"):
+                        show_loading_animation(animation_placeholder, "Marking as dispatched...")
                         success, message = update_request_status(req_id, "Dispatched")
+                        animation_placeholder.empty()
                         if success:
                             st.success(f"Marked as dispatched for request {req_id}")
                             st.rerun()
@@ -529,9 +760,11 @@ def store_dashboard():
                 elif status == "Dispatched":
                     delivered_to = st.text_input(f"Enter the name of the person who received the item for Request {req_id}", 
                                                 key=f"delivered_to_{req_id}")
-                    if st.button(f"Mark as Delivered for {req_id}", key=f"deliver_{req_id}"):
+                    if st.button(f"Mark as Delivered ", key=f"deliver_{req_id}"):
                         if delivered_to.strip():
+                            show_loading_animation(animation_placeholder, "Marking as delivered...")
                             success, message = update_request_status(req_id, "Delivered", delivered_to=delivered_to.strip())
+                            animation_placeholder.empty()
                             if success:
                                 delivery_time = format_timestamp(datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"))
                                 subject = "Request Delivered"
@@ -549,7 +782,6 @@ def store_dashboard():
                                     st.success(f"Marked as delivered for request {req_id} to {delivered_to}. Email sent to {email}.")
                                 except Exception as e:
                                     st.error(f"Marked as delivered for request {req_id} to {delivered_to}, but email failed: {e}")
-                                    print(f"Email sending error: {e}")
                                 st.rerun()
                             else:
                                 st.error(f"Failed to update status to 'Delivered' for request {req_id}: {message}")
@@ -559,11 +791,11 @@ def store_dashboard():
                     delivered_to = req.get("delivered_to", "N/A")
                     st.write(f"**Delivered to:** {delivered_to}")
     else:
-        st.info("No approved requests to handle.")
+        st.info("No requests ready for processing.")
 
 # Main function
 def main():
-    load_css()
+    load_css("styles.css")
     st.markdown(
         """
         <img src="https://www.itvoice.in/wp-content/uploads/2023/01/CEAT-Tyre-logo-2000x1000-1.png" class="logo">
@@ -578,17 +810,21 @@ def main():
         admin_dashboard()
     elif st.session_state.is_store:
         store_dashboard()
+    elif st.session_state.is_dept_head:
+        dept_head_dashboard()
     elif st.session_state.page == "register":
         register()
     else:
         with st.sidebar:
-            login_type = st.radio("Login Type", ["User", "Admin", "Store"])
+            login_type = st.radio("Login Type", ["User", "Admin", "Store", "Department Head"])
         if login_type == "User":
             user_login()
         elif login_type == "Admin":
             admin_login_main()
         elif login_type == "Store":
             store_login()
+        elif login_type == "Department Head":
+            dept_head_login()
 
 if __name__ == "__main__":
     main()

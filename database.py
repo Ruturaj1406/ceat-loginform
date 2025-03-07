@@ -54,7 +54,7 @@ def initialize_db():
                 department TEXT NOT NULL,
                 description TEXT NOT NULL,
                 suggestion TEXT,
-                status TEXT DEFAULT 'Pending',
+                status TEXT DEFAULT 'Pending Department Approval',
                 created_at TIMESTAMP,
                 updated_at TIMESTAMP,
                 delivered_to TEXT
@@ -189,23 +189,20 @@ def insert_request(name, email, emp_id, department, selected_items, description,
         return False, "Database connection failed"
     try:
         cursor = conn.cursor()
-        # Validate quantities
         for item in selected_items:
             cursor.execute('SELECT particular, quantity FROM items WHERE id = ?', (item["item_id"],))
             row = cursor.fetchone()
             if row and item["quantity"] > row["quantity"]:
                 return False, f"Currently, only {row['quantity']} quantity is available for {row['particular']}"
 
-        # Insert request
         now = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
         cursor.execute('''
             INSERT INTO requests 
             (name, email, emp_id, department, description, suggestion, status, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (name, email, emp_id, department, description, suggestion, 'Pending', now, now))
+        ''', (name, email, emp_id, department, description, suggestion, 'Pending Department Approval', now, now))
         request_id = cursor.lastrowid
 
-        # Insert request items
         for item in selected_items:
             cursor.execute('INSERT INTO request_items (request_id, item_id, quantity) VALUES (?, ?, ?)', 
                            (request_id, item["item_id"], item["quantity"]))
@@ -249,6 +246,22 @@ def get_requests_by_emp_id(emp_id):
     finally:
         conn.close()
 
+def get_requests_by_department(department):
+    """Fetch all requests for a specific department."""
+    conn = get_db_connection()
+    if conn is None:
+        return []
+    try:
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM requests WHERE department = ? ORDER BY created_at DESC', (department,))
+        requests = [dict(req) for req in cursor.fetchall()]
+        return requests
+    except sqlite3.Error as e:
+        print(f"Error fetching requests for department {department}: {e}")
+        return []
+    finally:
+        conn.close()
+
 def get_request_items(request_id):
     """Fetch items associated with a request."""
     conn = get_db_connection()
@@ -281,7 +294,6 @@ def update_request_status(request_id, status, delivered_to=None):
         cursor = conn.cursor()
         now = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
         
-        # Check if request exists
         cursor.execute('SELECT status FROM requests WHERE id = ?', (request_id,))
         result = cursor.fetchone()
         if not result:
@@ -289,7 +301,6 @@ def update_request_status(request_id, status, delivered_to=None):
         
         current_status = result['status']
         
-        # Update status and delivered_to if provided
         if status == "Delivered" and delivered_to:
             cursor.execute('''
                 UPDATE requests 
@@ -319,15 +330,25 @@ def delete_request(request_id):
     """Delete a request and its associated items."""
     conn = get_db_connection()
     if conn is None:
-        return
+        print("Failed to connect to database in delete_request.")
+        return False
     try:
         cursor = conn.cursor()
+        # Delete associated items first due to foreign key constraint
         cursor.execute('DELETE FROM request_items WHERE request_id = ?', (request_id,))
+        # Delete the request itself
         cursor.execute('DELETE FROM requests WHERE id = ?', (request_id,))
         conn.commit()
-        print(f"Request {request_id} deleted")
+        # Check if any rows were affected (indicates success)
+        if cursor.rowcount > 0:
+            print(f"Request {request_id} and its items deleted successfully.")
+            return True
+        else:
+            print(f"No request found with ID {request_id} to delete.")
+            return False
     except sqlite3.Error as e:
-        print(f"Error deleting request: {e}")
+        print(f"Error deleting request {request_id}: {e}")
+        return False
     finally:
         conn.close()
 

@@ -1,9 +1,17 @@
+/* Force light theme globally by overriding Streamlit's CSS variables */
+:root {
+    --text-color: #000000 !important;           /* Black text */
+    --background-color: #ffffff !important;     /* White background */
+    --secondary-background-color: #f0f0f0 !important; /* Light gray for secondary backgrounds */
+}
+
 /* Main App Background */
 [data-testid="stAppViewContainer"] {
     background: url('https://blogger.googleusercontent.com/img/a/AVvXsEiVN8f8ExHLhH2aDI_pN7f6FtJmKpzyUZlHpr2VWoj_iRDyy6l1TZjecTz2uewm6Bu22Nvj3WL2yztEsCnfogxdvsP3-rUdiBZ2fvFbV2hY5-D8lEZWjktvH_K88X8rKuwhy5uwS3R13H9HwBgoneYMJiw9_lzjqeALHe0dexl9pXmIKUtc_2-cBplnWy4') no-repeat center center fixed !important;
     background-size: cover !important;
     overflow: auto !important;
     min-height: 100vh !important;
+    
 }
 
 /* Hide Streamlit header and footer */
@@ -13,34 +21,12 @@ header, footer {
 
 /* Main Content Styling */
 [data-testid="stVerticalBlock"] {
-    
-    background:  rgba(160, 208, 229, 0.7) !important;
-    padding: 20px ;
-    border-radius: 10px ;
-    max-width: 800px ;
-    margin: 20px auto ;
-    position: relative ;
-}
-
-/* Prevent stVerticalBlock styling from affecting buttons */
-[data-testid="stVerticalBlock"] .stButton button {
-   
+    background: rgba(160, 208, 229, 0.7) !important;
+    padding: 20px !important;
+    border-radius: 10px !important;
+    max-width: 800px !important;
+    margin: 20px auto !important;
     position: relative !important;
-    width: 100% !important;
-    max-width: 200px !important;
-    margin: 8px 0 !important;
-    padding: 10px 15px !important;
-    background: linear-gradient(135deg, #007BFF, #00D4FF) !important;
-    background-color: none !important;
-    color: white !important;
-    font-weight: bold !important;
-    border: none !important;
-    border-radius: 8px !important;
-    transition: all 0.3s ease-in-out !important;
-    cursor: pointer !important;
-    display: block !important;
-    text-align: center !important;
-    box-sizing: border-box !important;
 }
 
 /* Sidebar Styling */
@@ -77,19 +63,45 @@ header, footer {
     background: linear-gradient(135deg, #0056b3, #00a8cc) !important;
 }
 
-/* Input Field Styling */
+/* Input Field Styling - Target container and inner elements */
 .stTextInput, .stSelectbox, .stNumberInput {
     margin: 10px 0 !important;
     width: 100% !important;
-    max-width: 600px !important;
-    padding: 8px !important;
+    max-width: 600px !important; 
     border-radius: 4px !important;
-    transition: border 0.2s ease-in-out !important;
+    color: #000000 !important;           
 }
 
-.stTextInput:focus, .stSelectbox:focus, .stNumberInput:focus {
-    border: 1px solid #007BFF !important;
-    outline: none !important;
+/* Target inner input elements specifically */
+.stTextInput input, 
+.stNumberInput input, 
+.stTextInput div[data-baseweb="input"] > input,
+.stNumberInput div[data-baseweb="input"] > input {
+   
+    color: #000000 !important;
+   
+}
+
+/* Target select elements */
+.stSelectbox select,
+.stSelectbox div[data-baseweb="select"] > div {
+    
+    color: #000000 !important;
+}
+
+/* Override dark mode for all input-related elements */
+div[data-baseweb="input"] > div,
+div[data-baseweb="select"] > div {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+}
+
+/* Focus states */
+.stTextInput:focus, .stSelectbox:focus, .stNumberInput:focus,
+.stTextInput input:focus, .stNumberInput input:focus {
+  
+    
+    color: #000000 !important;
 }
 
 /* Expander Styling */
@@ -138,29 +150,44 @@ header, footer {
     text-align: center !important;
 }
 
-/* Dark Mode Override for Mobile */
+
 @media (max-width: 768px) {
     [data-testid="stAppViewContainer"] {
         background: url('https://blogger.googleusercontent.com/img/a/AVvXsEgu6Nrmy1Zq3lLuivYlegHIOSGa_kNeSCwizQtyhj2A7DlFNmaKm7zqW-2zt3GhWTtcJeJK3vpZHJeG7zHHXeeUk5xnjbs1DfWIBp0zPlot6lF92Hk_5QFyZsrZBNzSYNNELNbfe949TP0Jioy-bmT2frcCkahMqgyFtWswqyZsK9m6InZ_3VtOmRGuytc') no-repeat center center fixed !important;
         background-size: cover !important;
+        background-color: #ffffff !important;
     }
 
-    body, [data-testid="stAppViewContainer"], [data-testid="stVerticalBlock"], [data-testid="stSidebar"] {
-        background-color: #ffffff !important;
+    body, [data-testid="stVerticalBlock"] {
+        background-color: rgba(160, 208, 229, 0.7) !important;
         color: #000000 !important;
     }
 
+    [data-testid="stSidebar"] {
+        background-color: rgba(255, 255, 255, 0.9) !important;
+    }
+
     .stTextInput, .stSelectbox, .stNumberInput {
-        background-color: #fff !important;
-        color: #000 !important;
+        
+        color: #000000 !important;
+    }
+
+    .stTextInput input, 
+    .stNumberInput input, 
+    .stTextInput div[data-baseweb="input"] > input,
+    .stNumberInput div[data-baseweb="input"] > input {
+        
+        color: #000000 !important;
+    }
+
+    .stSelectbox select,
+    .stSelectbox div[data-baseweb="select"] > div {
+        
+        color: #000000 !important;
     }
 
     .stButton button {
         background: linear-gradient(135deg, #007BFF, #00D4FF) !important;
         color: white !important;
-    }
-
-    [data-testid="stSidebar"] {
-        background-color: rgba(255, 255, 255, 0.9) !important;
     }
 }
