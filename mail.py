@@ -4,16 +4,35 @@ from email.mime.multipart import MIMEMultipart
 from email_validator import validate_email, EmailNotValidError
 
 def send_email(to_email, admin_name, subject, body, request_details=None, delivered_to=None, delivery_time=None):
-  
-    from_email = 'Ruturajnavale1406@gmail.com'  # Replace with your Gmail address
-    password = 'dgfy rkwj efij xcbb'            # Replace with your App Password if using Gmail with 2FA
+    """
+    Send an email using Gmail SMTP with dynamic content based on the subject.
+    
+    Args:
+        to_email (str): Recipient's email address.
+        admin_name (str): Name of the sender (e.g., "Admin").
+        subject (str): Email subject line.
+        body (str): Email body text.
+        request_details (dict, optional): Details of the request (name, email, description).
+        delivered_to (str, optional): Delivery recipient name (for "Delivered" emails).
+        delivery_time (str, optional): Delivery time (for "Delivered" emails).
+    
+    Returns:
+        bool: True if email is sent successfully.
+    
+    Raises:
+        Exception: If email validation or sending fails.
+    """
+    # Gmail credentials
+    from_email = 'Halol.Admin@ceat.com'  
+    password ='khmpqsrfxgspjswk'  
 
+    # Validate recipient email
     try:
         validate_email(to_email)
     except EmailNotValidError as e:
-        print(f"Invalid email address: {e}")
-        return
+        raise Exception(f"Invalid email address: {e}")
 
+    # Generate HTML content based on request details and subject
     if request_details:
         name = request_details.get('name', 'User')
         email = request_details.get('email', 'N/A')
@@ -31,7 +50,7 @@ def send_email(to_email, admin_name, subject, body, request_details=None, delive
                 except ValueError:
                     items.append({"name": entry, "quantity": "N/A"})
 
-        # Create items table for email
+        # Create items table
         items_table = """
         <table border="1" cellpadding="5" style="border-collapse: collapse; width: 50%;">
             <tr>
@@ -55,7 +74,7 @@ def send_email(to_email, admin_name, subject, body, request_details=None, delive
                 <body>
                     <h3>Hello {name},</h3>
                     <p>We are pleased to inform you that your request has been approved.</p>
-                    <p>Details of the approved request are as follows:</p>
+                    <p>Details of the approved request:</p>
                     <table border="1" cellpadding="5">
                         <tr>
                             <th>Name</th>
@@ -69,7 +88,7 @@ def send_email(to_email, admin_name, subject, body, request_details=None, delive
                     <h4>Items Approved:</h4>
                     {items_table}
                     <p><strong>Approved by:</strong> {admin_name}</p>
-                    <p>We will process your request and notify you once the items are ready for pickup.</p>
+                    <p>We will notify you once the items are ready for pickup.</p>
                 </body>
             </html>
             """
@@ -79,7 +98,7 @@ def send_email(to_email, admin_name, subject, body, request_details=None, delive
                 <body>
                     <h3>Hello {name},</h3>
                     <p>We regret to inform you that your request has been rejected.</p>
-                    <p>Details of the rejected request are as follows:</p>
+                    <p>Details of the rejected request:</p>
                     <table border="1" cellpadding="5">
                         <tr>
                             <th>Name</th>
@@ -93,7 +112,7 @@ def send_email(to_email, admin_name, subject, body, request_details=None, delive
                     <h4>Items Requested:</h4>
                     {items_table}
                     <p><strong>Rejected by:</strong> {admin_name}</p>
-                    <p>If you have any questions or need further clarification, please feel free to reach out to the support team.</p>
+                    <p>Contact support for clarification if needed.</p>
                 </body>
             </html>
             """
@@ -102,8 +121,8 @@ def send_email(to_email, admin_name, subject, body, request_details=None, delive
             <html>
                 <body>
                     <h3>Hello {name},</h3>
-                    <p>Your requested item is delivered to: <strong>{delivered_to}</strong> on <strong>{delivery_time}</strong>.</p>
-                    <p>Details of the delivered request are as follows:</p>
+                    <p>Your request has been delivered to <strong>{delivered_to}</strong> on <strong>{delivery_time}</strong>.</p>
+                    <p>Details of the delivered request:</p>
                     <table border="1" cellpadding="5">
                         <tr>
                             <th>Name</th>
@@ -116,8 +135,8 @@ def send_email(to_email, admin_name, subject, body, request_details=None, delive
                     </table>
                     <h4>Items Delivered:</h4>
                     {items_table}
-                    <p>If you can't receive the item, please contact us at <strong>9999999999</strong>.</p>
                     <p><strong>Processed by:</strong> {admin_name}</p>
+                    <p>Contact us at 9999999999 if you can't receive the item.</p>
                 </body>
             </html>
             """
@@ -127,7 +146,7 @@ def send_email(to_email, admin_name, subject, body, request_details=None, delive
                 <body>
                     <h3>Hello {name},</h3>
                     <p>{body}</p>
-                    <p>Details of your request:</p>
+                    <p>Request details:</p>
                     <table border="1" cellpadding="5">
                         <tr>
                             <th>Name</th>
@@ -141,12 +160,12 @@ def send_email(to_email, admin_name, subject, body, request_details=None, delive
                     <h4>Items Requested:</h4>
                     {items_table}
                     <p><strong>Processed by:</strong> System</p>
-                    <p>You will be notified once the request has been approved or rejected.</p>
+                    <p>You will be notified once your request is reviewed.</p>
                 </body>
             </html>
             """
     else:
-        # For custom emails without request details
+        # Custom email without request details
         html_content = f"""
         <html>
             <body>
@@ -156,19 +175,30 @@ def send_email(to_email, admin_name, subject, body, request_details=None, delive
         </html>
         """
 
+    # Set up email message
     msg = MIMEMultipart()
     msg['Subject'] = subject
     msg['From'] = from_email
     msg['To'] = to_email
     msg.attach(MIMEText(html_content, 'html'))
 
+    # Send email via SMTP
     try:
-        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+        with smtplib.SMTP('10.64.4.200', 25) as server:
             server.starttls()
             server.login(from_email, password)
             server.sendmail(from_email, to_email, msg.as_string())
-        print(f"Email successfully sent to {to_email}")
+        return True
     except smtplib.SMTPAuthenticationError as e:
-        print(f"SMTP Authentication Error: {e}")
+        raise Exception(f"SMTP Authentication Error: {e}")
     except Exception as e:
-        print(f"Error sending email: {e}")
+        raise Exception(f"Error sending email: {e}")
+
+if __name__ == "__main__":
+    # Test the function
+    send_email(
+        to_email="test@example.com",
+        admin_name="Admin",
+        subject="Test Email",
+        body="This is a test email."
+    )

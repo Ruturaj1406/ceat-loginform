@@ -1,46 +1,53 @@
-/* Force light theme globally by overriding Streamlit's CSS variables */
 :root {
-    --text-color: #000000 !important;           /* Black text */
-    --background-color: #ffffff !important;     /* White background */
-    --secondary-background-color: #f0f0f0 !important; /* Light gray for secondary backgrounds */
+    --text-color: #000000 !important;         
+    --background-color: #ffffff; 
+    --secondary-background-color: #f0f0f0 !important;
 }
 
-/* Main App Background */
 [data-testid="stAppViewContainer"] {
-    background: url('https://blogger.googleusercontent.com/img/a/AVvXsEiVN8f8ExHLhH2aDI_pN7f6FtJmKpzyUZlHpr2VWoj_iRDyy6l1TZjecTz2uewm6Bu22Nvj3WL2yztEsCnfogxdvsP3-rUdiBZ2fvFbV2hY5-D8lEZWjktvH_K88X8rKuwhy5uwS3R13H9HwBgoneYMJiw9_lzjqeALHe0dexl9pXmIKUtc_2-cBplnWy4') no-repeat center center fixed !important;
+    background: url('https://blogger.googleusercontent.com/img/a/AVvXsEiuphhyKvO4ptnSH3MzZYEKaIIOIygz_R02sJBTgzEPTrQ3qZGUszXxNA7y39IN1oDqR_KL9ME8nhUeUpZZ88Py7guiqQKLzzcNddm1J9jmSXz9wL_N4i4o0idxInMm0L9wBBL1GkIWl8EuDWp8pblE9cA-tAVQ9snkP4I4pJYxHlpeLSt2vVE7i97YEEE') no-repeat center center fixed !important;
     background-size: cover !important;
     overflow: auto !important;
     min-height: 100vh !important;
-    
 }
 
-/* Hide Streamlit header and footer */
-header, footer {
+header {
     display: none !important;
 }
 
-/* Main Content Styling */
+.block-container {
+    max-width: 1200px !important; 
+}
+
 [data-testid="stVerticalBlock"] {
-    background: rgba(160, 208, 229, 0.7) !important;
+    background: rgba(170, 227, 255, 0.8) !important;
     padding: 20px !important;
     border-radius: 10px !important;
-    max-width: 800px !important;
+    width: 103% !important;
+    max-width: 1400px !important;
     margin: 20px auto !important;
     position: relative !important;
 }
 
-/* Sidebar Styling */
-[data-testid="stSidebar"] {
-    background-color: rgba(255, 255, 255, 0.9) !important;
-    padding: 15px !important;
-    overflow: auto !important;
-    position: fixed !important;
-    height: 100% !important;
-    width: 250px !important;
+/* Footer styling */
+.footer {
+    position: fixed;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    font-size: 16px;
+    color: #000000;
+    transition: text-shadow 0.3s ease-in-out;
 }
 
-/* Button Styling */
-.stButton button {
+.footer:hover {
+    text-shadow: 0 0 8px rgba(203, 41, 192, 0.8);
+    color: #a645c9;
+}
+
+/* General button styling */
+.stButton > button {
     position: relative !important;
     width: 100% !important;
     max-width: 200px !important;
@@ -58,49 +65,89 @@ header, footer {
     box-sizing: border-box !important;
 }
 
-.stButton button:hover {
+.stButton > button:hover {
     transform: scale(1.05) !important;
     background: linear-gradient(135deg, #0056b3, #00a8cc) !important;
 }
 
-/* Input Field Styling - Target container and inner elements */
+/* Button container styling */
+div[data-testid="stButton"] {
+    background: #ffffff !important;
+    padding: 8px !important;
+    border-radius: 14px !important;
+    display: inline-block !important;
+    margin: 0 auto !important;
+}
+
+/* Horizontal block and column styling */
+[data-testid="stHorizontalBlock"] {
+    background: #ffffff !important;
+    padding: 5px !important;
+    border-radius: 10px !important;
+    display: flex !important;
+    gap: 10px !important;
+}
+
+[data-testid="stHorizontalBlock"] > div {
+    background: #ffffff !important;
+    padding: 5px !important;
+    border-radius: 10px !important;
+    display: inline-block !important;
+    vertical-align: top !important;
+}
+
+/* Reset stray divs */
+[data-testid="stVerticalBlock"] div {
+    background: none !important;
+}
+
+div[data-testid="stHorizontalBlock"] > div > div[data-testid="stButton"] {
+    background: #ffffff !important;
+}
+
+div[data-testid="stVerticalBlock"] > div:not([data-testid="stHorizontalBlock"]) {
+    background: none !important;
+}
+
+/* Input, selectbox, and number input styling */
 .stTextInput, .stSelectbox, .stNumberInput {
     margin: 10px 0 !important;
     width: 100% !important;
-    max-width: 600px !important; 
+    max-width: 650px !important;
     border-radius: 4px !important;
     color: #000000 !important;           
 }
 
-/* Target inner input elements specifically */
 .stTextInput input, 
 .stNumberInput input, 
 .stTextInput div[data-baseweb="input"] > input,
 .stNumberInput div[data-baseweb="input"] > input {
-   
     color: #000000 !important;
-   
 }
 
-/* Target select elements */
 .stSelectbox select,
 .stSelectbox div[data-baseweb="select"] > div {
-    
     color: #000000 !important;
 }
 
-/* Override dark mode for all input-related elements */
 div[data-baseweb="input"] > div,
 div[data-baseweb="select"] > div {
     background-color: #ffffff !important;
     color: #000000 !important;
 }
 
+/* Specific styling for Suggestion for Admin text area */
+.stTextArea > div > div > textarea {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    border: 1px solid #ccc !important;
+    border-radius: 4px !important;
+}
+
 /* Focus states */
 .stTextInput:focus, .stSelectbox:focus, .stNumberInput:focus,
-.stTextInput input:focus, .stNumberInput input:focus {
-  
-    
+.stTextInput input:focus, .stNumberInput input:focus,
+.stTextArea textarea:focus {
     color: #000000 !important;
 }
 
@@ -110,30 +157,46 @@ div[data-baseweb="select"] > div {
     padding: 10px !important;
 }
 
-/* Horizontal Block Styling */
-[data-testid="stHorizontalBlock"] > div {
-    max-width: 100% !important;
+/* Tab styling with transformation effect */
+div[data-testid="stTabs"] > div > button {
+    background: linear-gradient(135deg, #007BFF, #00D4FF) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 10px 20px !important;
+    margin: 5px !important;
+    transition: transform 0.3s ease-in-out, background 0.3s ease-in-out !important;
 }
 
-/* Sidebar Bottom Section */
-.sidebar-bottom {
-    position: absolute !important;
-    top: 470px !important;
-    bottom: 10px !important;
-    display: flex !important;
+div[data-testid="stTabs"] > div > button:hover {
+    transform: scale(1.05) !important;
+    background: linear-gradient(135deg, #0056b3, #00a8cc) !important;
 }
 
-.sidebar-bottom span {
-    font-size: 24px !important;
-    color: #7148e0 !important;
-    transition: text-shadow 0.3s ease-in-out !important;
+div[data-testid="stTabs"] > div > button[aria-selected="true"] {
+    background: linear-gradient(135deg, #0056b3, #00a8cc) !important;
+    transform: scale(1.05) !important;
 }
 
-.sidebar-bottom span:hover {
-    text-shadow: 0 0 10px #76a5f1, 0 0 20px #597dff, 0 0 30px #8086ff !important;
+div[data-testid="stTabs"] > div[role="tabpanel"] {
+    background: #ffffff !important;
+    padding: 15px !important;
+    border-radius: 10px !important;
+    animation: fadeIn 0.3s ease-in-out !important;
 }
 
-/* Logo Styling */
+/* Keyframe animation for tab content */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 .logo {
     position: absolute !important;
     width: 100px !important;
@@ -150,7 +213,7 @@ div[data-baseweb="select"] > div {
     text-align: center !important;
 }
 
-
+/* Mobile Adjustments */
 @media (max-width: 768px) {
     [data-testid="stAppViewContainer"] {
         background: url('https://blogger.googleusercontent.com/img/a/AVvXsEgu6Nrmy1Zq3lLuivYlegHIOSGa_kNeSCwizQtyhj2A7DlFNmaKm7zqW-2zt3GhWTtcJeJK3vpZHJeG7zHHXeeUk5xnjbs1DfWIBp0zPlot6lF92Hk_5QFyZsrZBNzSYNNELNbfe949TP0Jioy-bmT2frcCkahMqgyFtWswqyZsK9m6InZ_3VtOmRGuytc') no-repeat center center fixed !important;
@@ -163,31 +226,107 @@ div[data-baseweb="select"] > div {
         color: #000000 !important;
     }
 
-    [data-testid="stSidebar"] {
-        background-color: rgba(255, 255, 255, 0.9) !important;
-    }
-
     .stTextInput, .stSelectbox, .stNumberInput {
-        
         color: #000000 !important;
+        max-width: 90% !important;
     }
 
     .stTextInput input, 
     .stNumberInput input, 
     .stTextInput div[data-baseweb="input"] > input,
     .stNumberInput div[data-baseweb="input"] > input {
-        
         color: #000000 !important;
     }
 
     .stSelectbox select,
     .stSelectbox div[data-baseweb="select"] > div {
-        
         color: #000000 !important;
     }
 
-    .stButton button {
+    /* Button styling for mobile */
+    .stButton > button {
         background: linear-gradient(135deg, #007BFF, #00D4FF) !important;
         color: white !important;
+        margin: 2px 0 !important;
+        padding: 6px 10px !important;
+        max-width: 120px !important; /* Adjusted to ensure visibility */
+        min-width: 80px !important; /* Ensure buttons don’t collapse too small */
+        box-sizing: border-box !important;
+        display: block !important; /* Force visibility */
+        visibility: visible !important; /* Ensure not hidden */
+    }
+
+    div[data-testid="stButton"] {
+        display: inline-block !important;
+        padding: 2px !important;
+        margin: 0 2px !important; /* Slightly increased for spacing */
+        overflow: visible !important; /* Prevent clipping */
+    }
+
+    /* Target horizontal block for login/register buttons */
+    [data-testid="stHorizontalBlock"] {
+        background: #ffffff !important;
+        padding: 5px !important; /* Increased slightly for visibility */
+        border-radius: 10px !important;
+        display: flex !important;
+        gap: 10px !important; /* Adjusted for spacing without hiding */
+        justify-content: center !important;
+        align-items: center !important;
+        flex-wrap: nowrap !important; /* Prevent wrapping */
+        overflow: visible !important; /* Ensure buttons aren’t cut off */
+        width: 150% !important; /* Full width to fit buttons */
+        
+    }
+
+    /* Target columns within stHorizontalBlock */
+    [data-testid="stHorizontalBlock"] > div {
+        margin: 0 !important;
+        padding: 0 !important;
+        flex: 1 1 0 !important; /* Equal flex for both buttons */
+        min-width: 0 !important; /* Prevent collapse */
+        overflow: visible !important;
+    }
+
+    /* Ensure no extra spacing or clipping from Streamlit’s column layout */
+    div[data-testid="stHorizontalBlock"] > div > div {
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+    }
+
+    .stTextArea > div > div > textarea {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        border: 1px solid #ccc !important;
+        border-radius: 4px !important;
+    }
+
+    div[data-testid="stTabs"] > div > button {
+        background: linear-gradient(135deg, #007BFF, #00D4FF) !important;
+        color: white !important;
+        border-radius: 8px !important;
+        padding: 8px 16px !important;
+    }
+
+    div[data-testid="stTabs"] > div > button:hover {
+        transform: scale(1.05) !important;
+        background: linear-gradient(135deg, #0056b3, #00a8cc) !important;
+    }
+
+    div[data-testid="stTabs"] > div > button[aria-selected="true"] {
+        background: linear-gradient(135deg, #0056b3, #00a8cc) !important;
+        transform: scale(1.05) !important;
+    }
+
+    div[data-testid="stTabs"] > div[role="tabpanel"] {
+        background: #ffffff !important;
+        padding: 10px !important;
+        border-radius: 10px !important;
+        animation: fadeIn 0.3s ease-in-out !important;
+    }
+
+    .footer {
+        width: 100%;
+        font-size: 10px;
     }
 }

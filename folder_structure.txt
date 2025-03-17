@@ -1,0 +1,38 @@
+inventory-management-system/
+│
+├── src/                    # Source code directory
+│   ├── __init__.py         # Makes src a Python package
+│   ├── app.py             # Main Streamlit application file
+│   ├── database.py        # Database operations (SQLite)
+│   ├── mail.py            # Email utility functions
+│   │
+│   ├── static/            # Static assets (CSS, images, etc.)
+│   │   └── styles.css     # Custom CSS for Streamlit UI
+│   │
+│   ├── templates/         # (Optional) HTML templates for emails or future use
+│   │   └── email_templates/  # Subdirectory for email HTML templates (if separated from mail.py)
+│   │       ├── approved.html
+│   │       ├── rejected.html
+│   │       └── delivered.html
+│   │
+│   └── utils/             # Utility modules
+│       ├── __init__.py    # Makes utils a package
+│       └── helpers.py     # Helper functions (e.g., timestamp formatting, validation)
+│
+├── tests/                 # Unit tests directory
+│   ├── __init__.py        # Makes tests a package
+│   ├── test_database.py   # Tests for database.py functions
+│   ├── test_mail.py       # Tests for mail.py functions
+│   └── test_app.py        # Tests for app.py logic (e.g., authentication)
+│
+├── data/                  # Data-related files
+│   └── inventory.db       # SQLite database file
+│
+├── docs/                  # Documentation
+│   ├── README.md          # Project overview and setup instructions
+│   └── architecture.md    # System architecture and flow diagrams
+│
+├── requirements.txt       # Python dependencies (e.g., streamlit, sqlite3, smtplib, etc.)
+├── .env                   # Environment variables (e.g., email credentials)
+├── .gitignore             # Git ignore file (e.g., *.pyc, .env, inventory.db)
+└── run.sh                 # Script to run the Streamlit app (optional)
